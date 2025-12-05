@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useContext, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import Navbar from "../components/navbar.jsx";
 import Footer from "../components/footer.jsx";
 import { PRODUCTS } from "../data/product";
 import { ShoppingCart } from "lucide-react";
+import { categories } from "../context/categoriescontext";
 
 export default function ProductsPage({
   addToCart,
@@ -15,10 +16,21 @@ export default function ProductsPage({
   const navbarSearch = searchParams.get("search") || "";
 
   const [query, setQuery] = useState(navbarSearch);
-  const [category, setCategory] = useState("All");
   const [sortBy, setSortBy] = useState("none");
 
-  const categories = [
+  const context = useContext(categories);
+  if (!context) {
+    throw new Error("ProductsPage must be used inside CategoriesContextProvider");
+  }
+
+  const { selectedCategory, setSelectedCategory } = context;
+
+  // ✅ Correct place to log UPDATED value
+  useEffect(() => {
+    console.log("✅ ProductsPage category updated:", selectedCategory);
+  }, [selectedCategory]);
+
+  const categoriesList = [
     "All",
     "Electronics",
     "Fashion",
@@ -26,14 +38,13 @@ export default function ProductsPage({
     "Accessories",
   ];
 
-  // ✅ SINGLE SOURCE OF TRUTH FOR FILTERING
   const filteredProducts = useMemo(() => {
     let result = PRODUCTS.filter((p) =>
       p.name.toLowerCase().includes(query.toLowerCase())
     );
 
-    if (category !== "All") {
-      result = result.filter((p) => p.category === category);
+    if (selectedCategory !== "All") {
+      result = result.filter((p) => p.category === selectedCategory);
     }
 
     if (sortBy === "price-asc") {
@@ -45,7 +56,7 @@ export default function ProductsPage({
     }
 
     return result;
-  }, [query, category, sortBy]);
+  }, [query, selectedCategory, sortBy]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -66,11 +77,11 @@ export default function ProductsPage({
             />
 
             <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
               className="border px-3 py-2 rounded-full text-sm"
             >
-              {categories.map((c) => (
+              {categoriesList.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
@@ -121,7 +132,6 @@ export default function ProductsPage({
                     {product.category} • ⭐ {product.rating}
                   </p>
 
-                  {/* ✅ CART BUTTON */}
                   <button
                     onClick={() => addToCart(product)}
                     className="w-full bg-blue-600 text-white py-2 rounded-full text-sm flex items-center justify-center hover:bg-blue-700"
@@ -130,7 +140,6 @@ export default function ProductsPage({
                     Add to Cart
                   </button>
 
-                  {/* ✅ WISHLIST BUTTON */}
                   <button
                     onClick={() => {
                       addToWishlist(product);
