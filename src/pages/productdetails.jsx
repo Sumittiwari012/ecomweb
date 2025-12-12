@@ -1,38 +1,77 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { PRODUCTS } from "../data/product";
+import { useState, useEffect } from "react";
 import Navbar from "../components/navbar.jsx";
 import Footer from "../components/footer.jsx";
+import { getProductByIdAPI } from "../api/products";
 
 export default function ProductDetails({
   addToCart,
-  addToWishlist,   // ✅ REQUIRED
+  addToWishlist,
   cartCount,
   user,
-  placeOrder,
 }) {
-
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const product = PRODUCTS.find((p) => p.id === Number(id));
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!product) return <p className="p-10">Product not found</p>;
+  useEffect(() => {
+    setLoading(true);
+    
+    getProductByIdAPI(id)
+      .then((res) => {
+        console.log("✅ Fetched Product:", res.data);
+        setProduct(res.data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error fetching product:", err);
+        setLoading(false);
+      });
+  }, [id]);
 
+  // ✅ FIXED BUY NOW - Format data correctly for checkout
   const handleBuyNow = () => {
-  if (!user) {
-    navigate("/login");
-    return;
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    // Format the product data to match what checkout expects
+    const checkoutItem = {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      qty: 1
+    };
+
+    console.log("🛒 Buy Now (Product Details):", checkoutItem);
+    
+    localStorage.setItem("singleCheckout", JSON.stringify([checkoutItem]));
+    navigate("/checkout");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Navbar cartCount={cartCount} user={user} />
+        <div className="p-10 text-center text-xl">Loading product details...</div>
+        <Footer />
+      </div>
+    );
   }
 
-  // ✅ Store single-item checkout in localStorage
-  localStorage.setItem(
-    "singleCheckout",
-    JSON.stringify([{ ...product, qty: 1 }])
-  );
-
-  // ✅ Go to checkout page instead of order-success
-  navigate("/checkout");
-};
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Navbar cartCount={cartCount} user={user} />
+        <p className="p-10 text-center text-red-500">Product not found</p>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -55,31 +94,30 @@ export default function ProductDetails({
           </p>
 
           <div className="mt-6 flex flex-wrap gap-4">
-  <button
-    onClick={() => addToCart(product)}
-    className="bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700"
-  >
-    Add to Cart
-  </button>
+            <button
+              onClick={() => addToCart(product.id)}
+              className="bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700"
+            >
+              Add to Cart
+            </button>
 
-  <button
-    onClick={handleBuyNow}
-    className="bg-green-600 text-white px-6 py-3 rounded-full hover:bg-green-700"
-  >
-    Buy Now
-  </button>
+            <button
+              onClick={handleBuyNow}
+              className="bg-green-600 text-white px-6 py-3 rounded-full hover:bg-green-700"
+            >
+              Buy Now
+            </button>
 
-  <button
-    onClick={() => {
-      addToWishlist(product);
-      alert("✅ Added to Wishlist");
-    }}
-    className="bg-pink-600 text-white px-6 py-3 rounded-full hover:bg-pink-700"
-  >
-    ❤️ Add to Wishlist
-  </button>
-</div>
-
+            <button
+              onClick={() => {
+                addToWishlist(product);
+                alert("✅ Added to Wishlist");
+              }}
+              className="bg-pink-600 text-white px-6 py-3 rounded-full hover:bg-pink-700"
+            >
+              ❤️ Add to Wishlist
+            </button>
+          </div>
         </div>
       </div>
 

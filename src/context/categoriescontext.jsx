@@ -5,7 +5,7 @@ export const categories = createContext();
 
 // ✅ Provider Component (Capital Letter REQUIRED)
 const CategoriesContextProvider = ({ children }) => {
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState(0);
 
   const value = {
     selectedCategory,

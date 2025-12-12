@@ -13,114 +13,189 @@ import ProfilePage from "./pages/profile.jsx";
 import OrdersPage from "./pages/orders.jsx";
 import WishlistPage from "./pages/wishlist.jsx";
 
-export default function App() {
-  // ✅ CART
-  const [cartItems, setCartItems] = useState(() => {
-    const saved = localStorage.getItem("cart");
-    return saved ? JSON.parse(saved) : [];
-  });
+// ✅ BACKEND APIs
+import {
+  getCartAPI,
+  addToCartAPI,
+  removeFromCartAPI,
+} from "./api/cart";
+import {
+  getWishlistAPI,
+  addToWishlistAPI,
+  removeFromWishlistAPI,
+} from "./api/wishlist";
+import { getMyOrdersAPI, placeOrderAPI } from "./api/orders";
 
-  // ✅ USER
+export default function App() {
+  // ✅ USER STATE
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("user");
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  // ✅ ORDERS
-  const [orders, setOrders] = useState(() => {
-    const saved = localStorage.getItem("orders");
-    return saved ? JSON.parse(saved) : [];
-  });
+  // ✅ BACKEND STATE
+  const [cartItems, setCartItems] = useState([]);
+  const [wishlist, setWishlist] = useState([]);
+  const [orders, setOrders] = useState([]);
 
-  // ✅ WISHLIST
-  const [wishlist, setWishlist] = useState(() => {
-    const saved = localStorage.getItem("wishlist");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(cartItems));
-  }, [cartItems]);
-
-  useEffect(() => {
-    localStorage.setItem("orders", JSON.stringify(orders));
-  }, [orders]);
-
-  useEffect(() => {
-    localStorage.setItem("wishlist", JSON.stringify(wishlist));
-  }, [wishlist]);
-
+  // ✅ PERSIST USER
   useEffect(() => {
     if (user) localStorage.setItem("user", JSON.stringify(user));
     else localStorage.removeItem("user");
   }, [user]);
 
+  // ✅ LOAD DATA AFTER LOGIN
+useEffect(() => {
+  // 1. Debug: Check if the user exists
+  console.log("👤 Current User State:", user); 
+
+  if (!user) {
+    console.log("❌ User is NOT logged in. Stopping data fetch.");
+    return;
+  }
+
+  console.log("✅ User exists. Fetching data...");
+
+  getCartAPI().then((res) => setCartItems(res.data));
+  getWishlistAPI().then((res) => setWishlist(res.data));
+
+  // 👇 DEBUG LOGS FOR ORDERS
+  getMyOrdersAPI()
+    .then((res) => {
+      console.log("🚀 FULL API RESPONSE:", res);
+      console.log("📦 RAW ORDERS DATA:", res.data); 
+      setOrders(res.data);
+    })
+    .catch((err) => console.error("❌ Failed to fetch orders:", err));
+}, [user]);
+
+  // ✅ AUTH
   const login = (userData) => setUser(userData);
-  const logout = () => setUser(null);
 
-  // ✅ CART FUNCTIONS
-  const addToCart = (product) => {
-    setCartItems((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
-      if (existing) {
-        return prev.map((item) =>
-          item.id === product.id
-            ? { ...item, qty: item.qty + 1 }
-            : item
-        );
+  const logout = () => {
+    setUser(null);
+    setCartItems([]);
+    setWishlist([]);
+    setOrders([]);
+    localStorage.removeItem("token");
+  };
+
+  // ✅ CART
+  const addToCart = async (productId) => {
+    await addToCartAPI(productId, 1);
+    const res = await getCartAPI();
+    setCartItems(res.data);
+  };
+
+  // ✅ UPDATE QUANTITY
+  const updateQty = async (productId, newQty) => {
+    if (newQty <= 0) {
+      await removeFromCart(productId);
+      return;
+    }
+
+    const item = cartItems.find(i => i.product.id === productId);
+    if (!item) return;
+
+    const currentQty = item.quantity;
+
+    if (newQty > currentQty) {
+      const diff = newQty - currentQty;
+      await addToCartAPI(productId, diff);
+    }
+
+    if (newQty < currentQty) {
+      await removeFromCartAPI(productId);
+      await addToCartAPI(productId, newQty);
+    }
+
+    const res = await getCartAPI();
+    setCartItems(res.data);
+  };
+
+  const removeFromCart = async (productId) => {
+    await removeFromCartAPI(productId);
+    const res = await getCartAPI();
+    setCartItems(res.data);
+  };
+
+  // ✅ CLEAR SPECIFIC ITEMS FROM CART (after checkout)
+  const clearCheckedOutItems = async (checkedOutItems) => {
+    try {
+      console.log("🗑️ Clearing items:", checkedOutItems);
+      
+      for (const item of checkedOutItems) {
+        // Handle both 'id' and 'ProductId' properties
+        const productId = item.id || item.ProductId;
+        
+        if (!productId) {
+          console.warn("Item has no id:", item);
+          continue;
+        }
+        
+        try {
+          console.log(`Removing product ${productId} from cart`);
+          await removeFromCartAPI(productId);
+        } catch (error) {
+          console.log(`Could not remove item ${productId}:`, error.message);
+        }
       }
-      return [...prev, { ...product, qty: 1 }];
-    });
+      
+      // Refresh cart
+      const res = await getCartAPI();
+      setCartItems(res.data);
+      console.log("✅ Cart cleared successfully");
+    } catch (error) {
+      console.error("❌ Error clearing cart:", error);
+    }
   };
 
-  const updateQty = (id, qty) => {
-    setCartItems((prev) =>
-      qty <= 0
-        ? prev.filter((item) => item.id !== id)
-        : prev.map((item) =>
-            item.id === id ? { ...item, qty } : item
-          )
-    );
-  };
-
-  const removeFromCart = (id) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  const clearCart = () => setCartItems([]);
-
-  const cartCount = cartItems.reduce((sum, item) => sum + item.qty, 0);
-
-  // ✅ ORDER
-  const placeOrder = (items) => {
-    const newOrder = {
-      id: Date.now(),
-      items,
-      date: new Date().toLocaleString(),
-      status: "Placed",
-    };
-    setOrders((prev) => [newOrder, ...prev]);
-  };
+  const cartCount = cartItems.reduce(
+    (sum, item) => sum + item.quantity,
+    0
+  );
 
   // ✅ WISHLIST
-  const addToWishlist = (product) => {
-    setWishlist((prev) => {
-      if (prev.find((item) => item.id === product.id)) return prev;
-      return [...prev, product];
-    });
+  const addToWishlist = async (product) => {
+    await addToWishlistAPI(product.id);
+    const res = await getWishlistAPI();
+    setWishlist(res.data);
   };
 
-  const removeFromWishlist = (id) => {
-    setWishlist((prev) => prev.filter((item) => item.id !== id));
+  const removeFromWishlist = async (id) => {
+    await removeFromWishlistAPI(id);
+    const res = await getWishlistAPI();
+    setWishlist(res.data);
+  };
+
+  // ✅ ORDERS
+  const placeOrder = async (items) => {
+    await placeOrderAPI(items);
+    const res = await getMyOrdersAPI();
+    setOrders(res.data);
   };
 
   return (
-    
     <Routes>
       <Route
-        path="/"
+  path="/"
+  element={
+    <Home
+      addToCart={addToCart}
+      addToWishlist={addToWishlist}
+      cartCount={cartCount}
+      
+      wishlist={wishlist} // 👈 ADD THIS PROP
+      
+      user={user}
+    />
+  }
+/>
+
+      <Route
+        path="/products"
         element={
-          <Home
+          <ProductsPage
             addToCart={addToCart}
             addToWishlist={addToWishlist}
             cartCount={cartCount}
@@ -128,19 +203,6 @@ export default function App() {
           />
         }
       />
-
-      <Route
-  path="/products"
-  element={
-    <ProductsPage
-      addToCart={addToCart}
-      addToWishlist={addToWishlist}
-      cartCount={cartCount}
-      user={user}
-    />
-  }
-/>
-
 
       <Route
         path="/product/:id"
@@ -160,11 +222,10 @@ export default function App() {
         element={
           <CartPage
             cartItems={cartItems}
-            updateQty={updateQty}
+            updateQuantity={updateQty} // ✅ FIXED: Passed as 'updateQuantity'
             removeFromCart={removeFromCart}
             cartCount={cartCount}
             user={user}
-            placeOrder={placeOrder}
           />
         }
       />
@@ -175,8 +236,7 @@ export default function App() {
           <CheckoutPage
             cartItems={cartItems}
             cartCount={cartCount}
-            clearCart={clearCart}
-            setCartItems={setCartItems}
+            clearCheckedOutItems={clearCheckedOutItems}
             placeOrder={placeOrder}
             user={user}
           />
@@ -195,7 +255,9 @@ export default function App() {
 
       <Route
         path="/register"
-        element={<RegisterPage cartCount={cartCount} login={login} user={user} />}
+        element={
+          <RegisterPage cartCount={cartCount} login={login} user={user} />
+        }
       />
 
       <Route
@@ -213,7 +275,9 @@ export default function App() {
 
       <Route
         path="/orders"
-        element={<OrdersPage orders={orders} cartCount={cartCount} user={user} />}
+        element={
+          <OrdersPage orders={orders} cartCount={cartCount} user={user} />
+        }
       />
 
       <Route

@@ -10,8 +10,16 @@ export default function Profile({
   orders,
   wishlist,
 }) {
-
   const navigate = useNavigate();
+
+  // ✅ DEBUG: Log orders when component loads
+  useEffect(() => {
+    console.log("👤 Profile Page Loaded");
+    console.log("📦 Orders prop:", orders);
+    console.log("📦 Orders length:", orders?.length);
+    console.log("❤️ Wishlist prop:", wishlist);
+    console.log("🛒 Cart count:", cartCount);
+  }, [orders, wishlist, cartCount]);
 
   useEffect(() => {
     if (!user) navigate("/login");
@@ -22,6 +30,22 @@ export default function Profile({
   const handleLogout = () => {
     logout();
     navigate("/");
+  };
+
+  // ✅ DEBUG: Log when "My Orders" button is clicked
+  const handleMyOrdersClick = () => {
+    console.log("🔍 'My Orders' button clicked");
+    console.log("📦 Current orders state:", orders);
+    console.log("📦 Orders count:", orders?.length);
+    
+    if (orders && orders.length > 0) {
+      console.log("📦 First order:", orders[0]);
+      console.log("📦 First order items:", orders[0]?.items);
+    } else {
+      console.log("⚠️ No orders found!");
+    }
+    
+    navigate("/orders");
   };
 
   return (
@@ -55,37 +79,36 @@ export default function Profile({
 
           {/* STATS */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-  <div className="bg-white p-6 rounded-xl shadow text-center">
-    <p className="text-gray-500 text-sm">Orders</p>
-    <p className="text-2xl font-bold mt-1">{orders.length}</p>
-  </div>
+            <div className="bg-white p-6 rounded-xl shadow text-center">
+              <p className="text-gray-500 text-sm">Orders</p>
+              <p className="text-2xl font-bold mt-1">{orders?.length || 0}</p>
+            </div>
 
-  <div className="bg-white p-6 rounded-xl shadow text-center">
-    <p className="text-gray-500 text-sm">Wishlist</p>
-    <p className="text-2xl font-bold mt-1">{wishlist.length}</p>
-  </div>
+            <div className="bg-white p-6 rounded-xl shadow text-center">
+              <p className="text-gray-500 text-sm">Wishlist</p>
+              <p className="text-2xl font-bold mt-1">{wishlist?.length || 0}</p>
+            </div>
 
-  <div className="bg-white p-6 rounded-xl shadow text-center">
-    <p className="text-gray-500 text-sm">Cart Items</p>
-    <p className="text-2xl font-bold mt-1">{cartCount}</p>
-  </div>
-</div>
-
+            <div className="bg-white p-6 rounded-xl shadow text-center">
+              <p className="text-gray-500 text-sm">Cart Items</p>
+              <p className="text-2xl font-bold mt-1">{cartCount || 0}</p>
+            </div>
+          </div>
 
           {/* QUICK ACTIONS */}
           <div className="bg-white p-6 rounded-xl shadow flex flex-wrap gap-4">
             <button
-              onClick={() => navigate("/orders")}
+              onClick={handleMyOrdersClick}
               className="bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700"
             >
-              My Orders
+              My Orders ({orders?.length || 0})
             </button>
 
             <button
               onClick={() => navigate("/wishlist")}
               className="bg-gray-800 text-white px-6 py-3 rounded-full hover:bg-black"
             >
-              Wishlist
+              Wishlist ({wishlist?.length || 0})
             </button>
 
             <button
@@ -95,6 +118,8 @@ export default function Profile({
               Continue Shopping
             </button>
           </div>
+
+          
 
         </div>
       </div>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import Navbar from "../components/navbar.jsx";
 import Footer from "../components/footer.jsx";
 import { useNavigate, Link } from "react-router-dom";
-
+import { registerUser } from "../api/auth";
 export default function register({ cartCount ,login}) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -10,7 +10,7 @@ export default function register({ cartCount ,login}) {
   const [confirm, setConfirm] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
   e.preventDefault();
 
   if (password !== confirm) {
@@ -18,14 +18,22 @@ export default function register({ cartCount ,login}) {
     return;
   }
 
-  const userData = {
-    name,
-    email,
-  };
+  try {
+    await registerUser({
+      name,
+      email,
+      password,
+    });
 
-  login(userData);   // ✅ auto-login after register
-  navigate("/profile");
+    alert("✅ Registration successful");
+    navigate("/login");   // user will now login using backend
+
+  } catch (error) {
+    console.error(error);
+    alert("❌ Registration failed");
+  }
 };
+
 
 
   return (

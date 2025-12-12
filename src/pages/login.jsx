@@ -2,22 +2,31 @@ import { useState } from "react";
 import Navbar from "../components/navbar.jsx";
 import Footer from "../components/footer.jsx";
 import { useNavigate, Link } from "react-router-dom";
-
+import { loginUser } from "../api/auth";
 export default function login({ cartCount ,login}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async(e) => {
   e.preventDefault();
 
-  const userData = {
-    name: "Demo User",
-    email: email,
-  };
+  try {
+    const res = await loginUser({
+      email,
+      password,
+    });
 
-  login(userData);   // ✅ sets global user session
-  navigate("/profile");
+    // ✅ Save user in App state
+    login(res.user);
+
+    alert("✅ Login successful");
+    navigate("/profile");
+
+  } catch (error) {
+    console.error(error);
+    alert("❌ Invalid email or password");
+  }
 };
 
 

@@ -1,10 +1,10 @@
-import { useState, useMemo, useContext, useEffect } from "react";
+import { useState, useMemo, useEffect, useContext } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import Navbar from "../components/navbar.jsx";
 import Footer from "../components/footer.jsx";
-import { PRODUCTS } from "../data/product";
 import { ShoppingCart } from "lucide-react";
 import { categories } from "../context/categoriescontext";
+import { getProductsAPI, getProductsByCategoryAPI } from "../api/products";
 
 export default function ProductsPage({
   addToCart,
@@ -17,6 +17,8 @@ export default function ProductsPage({
 
   const [query, setQuery] = useState(navbarSearch);
   const [sortBy, setSortBy] = useState("none");
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const context = useContext(categories);
   if (!context) {
@@ -25,27 +27,48 @@ export default function ProductsPage({
 
   const { selectedCategory, setSelectedCategory } = context;
 
-  // ✅ Correct place to log UPDATED value
   useEffect(() => {
-    console.log("✅ ProductsPage category updated:", selectedCategory);
+    setLoading(true);
+
+    if (selectedCategory === 0) {
+      getProductsAPI()
+        .then((res) => {
+          console.log("✅ All Products:", res.data);
+          setProducts(res.data);
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.error("❌ Product API error:", err);
+          setLoading(false);
+        });
+    } else {
+      getProductsByCategoryAPI(selectedCategory)
+        .then((res) => {
+          console.log("✅ Category Products:", res.data);
+          setProducts(res.data);
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.error("❌ Category API error:", err);
+          setLoading(false);
+        });
+    }
   }, [selectedCategory]);
 
   const categoriesList = [
-    "All",
-    "Electronics",
-    "Fashion",
-    "Home & Living",
-    "Accessories",
+    { id: 0, name: "All" },
+    { id: 1, name: "Men" },
+    { id: 2, name: "Women" },
+    { id: 3, name: "Kids" },
+    { id: 4, name: "Accessories" },
+    { id: 5, name: "Footwear" },
+    { id: 6, name: "Sale" },
   ];
 
   const filteredProducts = useMemo(() => {
-    let result = PRODUCTS.filter((p) =>
+    let result = products.filter((p) =>
       p.name.toLowerCase().includes(query.toLowerCase())
     );
-
-    if (selectedCategory !== "All") {
-      result = result.filter((p) => p.category === selectedCategory);
-    }
 
     if (sortBy === "price-asc") {
       result = [...result].sort((a, b) => a.price - b.price);
@@ -56,14 +79,13 @@ export default function ProductsPage({
     }
 
     return result;
-  }, [query, selectedCategory, sortBy]);
+  }, [products, query, selectedCategory, sortBy]);
 
   return (
     <div className="min-h-screen bg-white">
       <Navbar cartCount={cartCount} user={user} />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* ✅ FILTER BAR */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <h1 className="text-3xl font-bold">All Products</h1>
 
@@ -78,12 +100,12 @@ export default function ProductsPage({
 
             <select
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={(e) => setSelectedCategory(Number(e.target.value))}
               className="border px-3 py-2 rounded-full text-sm"
             >
               {categoriesList.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>
@@ -101,8 +123,9 @@ export default function ProductsPage({
           </div>
         </div>
 
-        {/* ✅ PRODUCT GRID */}
-        {filteredProducts.length === 0 ? (
+        {loading ? (
+          <p>Loading products...</p>
+        ) : filteredProducts.length === 0 ? (
           <p>No products found.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -133,7 +156,10 @@ export default function ProductsPage({
                   </p>
 
                   <button
-                    onClick={() => addToCart(product)}
+                    onClick={() => {
+                      console.log("🛒 Adding to cart:", product.id);
+                      addToCart(product.id);
+                    }}
                     className="w-full bg-blue-600 text-white py-2 rounded-full text-sm flex items-center justify-center hover:bg-blue-700"
                   >
                     <ShoppingCart className="h-4 w-4 mr-1" />
@@ -142,10 +168,11 @@ export default function ProductsPage({
 
                   <button
                     onClick={() => {
-                      addToWishlist(product);
+                      console.log("❤️ Adding to wishlist (full product):", product);
+                      addToWishlist(product); // ✅ Pass full product object
                       alert("✅ Added to Wishlist");
                     }}
-                    className="mt-2 text-sm font-medium text-pink-600 hover:underline"
+                    className="mt-2 text-sm font-medium text-pink-600 hover:underline w-full"
                   >
                     ❤️ Add to Wishlist
                   </button>

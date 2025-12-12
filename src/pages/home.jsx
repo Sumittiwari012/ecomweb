@@ -6,10 +6,7 @@ import ProductGrid from "../components/productgrid.jsx";
 import Footer from "../components/footer.jsx";
 
 export default function Home({
-  addToCart,
-  addToWishlist,   // ✅ ADD THIS
-  cartCount,
-  user,
+  addToCart, addToWishlist, cartCount, wishlist, user
 }) {
 
   return (
@@ -19,10 +16,11 @@ export default function Home({
       <Hero />
       <Features />
       <CategorySection />
-      <ProductGrid
-  addToCart={addToCart}
-  addToWishlist={addToWishlist}
-/>
+      <ProductGrid 
+          addToCart={addToCart} 
+          addToWishlist={addToWishlist} 
+          wishlist={wishlist} // 👈 Pass it down here
+       />
 
       <Footer />
     </div>
