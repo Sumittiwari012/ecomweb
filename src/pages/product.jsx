@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useContext } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom"; // Added useNavigate
 import Navbar from "../components/navbar.jsx";
 import Footer from "../components/footer.jsx";
 import { ShoppingCart } from "lucide-react";
@@ -14,6 +14,7 @@ export default function ProductsPage({
 }) {
   const [searchParams] = useSearchParams();
   const navbarSearch = searchParams.get("search") || "";
+  const navigate = useNavigate(); // Initialize navigate
 
   const [query, setQuery] = useState(navbarSearch);
   const [sortBy, setSortBy] = useState("none");
@@ -22,7 +23,9 @@ export default function ProductsPage({
 
   const context = useContext(categories);
   if (!context) {
-    throw new Error("ProductsPage must be used inside CategoriesContextProvider");
+    throw new Error(
+      "ProductsPage must be used inside CategoriesContextProvider"
+    );
   }
 
   const { selectedCategory, setSelectedCategory } = context;
@@ -80,6 +83,27 @@ export default function ProductsPage({
 
     return result;
   }, [products, query, selectedCategory, sortBy]);
+
+  // ✅ HANDLER: Add to Cart (Redirects if not logged in)
+  const handleAddToCart = (product) => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    console.log("🛒 Adding to cart:", product.id);
+    addToCart(product.id);
+  };
+
+  // ✅ HANDLER: Add to Wishlist (Redirects if not logged in)
+  const handleAddToWishlist = (product) => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    console.log("❤️ Adding to wishlist (full product):", product);
+    addToWishlist(product);
+    alert("✅ Added to Wishlist");
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -143,9 +167,7 @@ export default function ProductsPage({
                 </Link>
 
                 <div className="p-4">
-                  <h2 className="font-semibold text-lg mb-1">
-                    {product.name}
-                  </h2>
+                  <h2 className="font-semibold text-lg mb-1">{product.name}</h2>
 
                   <p className="text-blue-600 font-bold mb-1">
                     ${product.price}
@@ -156,10 +178,7 @@ export default function ProductsPage({
                   </p>
 
                   <button
-                    onClick={() => {
-                      console.log("🛒 Adding to cart:", product.id);
-                      addToCart(product.id);
-                    }}
+                    onClick={() => handleAddToCart(product)}
                     className="w-full bg-blue-600 text-white py-2 rounded-full text-sm flex items-center justify-center hover:bg-blue-700"
                   >
                     <ShoppingCart className="h-4 w-4 mr-1" />
@@ -167,11 +186,7 @@ export default function ProductsPage({
                   </button>
 
                   <button
-                    onClick={() => {
-                      console.log("❤️ Adding to wishlist (full product):", product);
-                      addToWishlist(product); // ✅ Pass full product object
-                      alert("✅ Added to Wishlist");
-                    }}
+                    onClick={() => handleAddToWishlist(product)}
                     className="mt-2 text-sm font-medium text-pink-600 hover:underline w-full"
                   >
                     ❤️ Add to Wishlist
