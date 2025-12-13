@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://localhost:7224/api",   // ✅ Your .NET backend base URL
+  baseURL: "https://shopvibe.runasp.net/api",   // ✅ Your .NET backend base URL
 });
 
 api.interceptors.request.use((config) => {
